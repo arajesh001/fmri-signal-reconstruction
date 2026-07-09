@@ -1,4 +1,4 @@
-# Project Title
+# fMRI Signal Reconstruction
 
 Cleaning noisy fMRI derived heart rate happy outputs (rapidtide package) using motion regressors and machine learning. 
 
