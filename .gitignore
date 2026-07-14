@@ -1,16 +1,15 @@
-# Data
+# Large datasets
 data/raw/
 data/processed/
-results/
-*.npy
-*.npz
-*.csv
-*.h5
-*.mat
+
 *.nii
 *.nii.gz
+*.npy
+*.npz
+*.h5
+*.mat
 
-# env
+# Environment
 .env
 *.env
 .venv/
@@ -23,12 +22,10 @@ __pycache__/
 .pytest_cache/
 .ipynb_checkpoints/
 
-# OS/editor cruft
+# OS/editor
 .DS_Store
 .vscode/
 .idea/
 
-# Docker
+# Logs
 *.log
-
-# Additional
