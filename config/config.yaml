@@ -1,0 +1,11 @@
+paths:
+  raw_data: data
+  output: output
+
+dataset:
+  task: hand
+  echo: 1
+
+physio:
+  sampling_rate: 100
+  cardiac_column: 6
