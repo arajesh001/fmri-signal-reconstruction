@@ -2,9 +2,16 @@ from pathlib import Path
 import pandas as pd
 import nibabel as nib
 import json
+import yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
+with open(PROJECT_ROOT / "config" / "config.yaml") as f:
+    config = yaml.safe_load(f)
+
+DATA_DIR = PROJECT_ROOT / config["paths"]["raw_data"]
+OUTPUT_DIR = PROJECT_ROOT / config["paths"]["output"]
+task = config["dataset"]["task"]
+echo = config["dataset"]["echo"]
 
 # ==========================================================
 # STORAGE
@@ -80,6 +87,7 @@ for subject_dir in DATA_DIR.iterdir():
             "Y": y,
             "Z": z,
             "Volumes": volumes,
+            "Shape": str(shape),
 
             "Voxel X": voxel_x,
             "Voxel Y": voxel_y,
@@ -96,8 +104,8 @@ for subject_dir in DATA_DIR.iterdir():
             "Scanner Model": scanner_model,
             "Magnetic Field": magnetic_field,
 
-            "BOLD Path": str(bold_file),
-            "JSON Path": str(json_file),
+            "BOLD Path": str(bold_file.relative_to(PROJECT_ROOT)),
+            "JSON Path": str(json_file.relative_to(PROJECT_ROOT)),
 
             "Status": "Ready"
         })
