@@ -124,3 +124,7 @@ class Scan:
     @property
     def id(self) -> str:
         return f"{self.subject}_{self.session}"
+
+    @property
+    def happy_dir(self) -> Path:
+        return self.cardpulse_tsv.parent.parent
