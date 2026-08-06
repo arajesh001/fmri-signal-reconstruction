@@ -1,6 +1,14 @@
 paths:
+  #scripts
   raw_data: data
   output: output
+
+  # data
+  hand: data/hand
+  happy: data/happy
+  motion: data/motion
+  ground_truth: data/ground_truth
+  dataset: data/dataset
 
 dataset:
   task: hand
