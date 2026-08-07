@@ -2,16 +2,12 @@
 discovery.py
 
 Searches the filesystem and creates Scan objects.
+
 """
 
 from pathlib import Path
 
-from config import (
-    HAND_ROOT,
-    HAPPY_ROOT,
-    MOTION_ROOT,
-    GROUND_TRUTH_ROOT,
-)
+from config import HAND_ROOT, HAPPY_ROOT
 
 from .scan import Scan
 
@@ -21,7 +17,8 @@ from .scan import Scan
 
 def discover_scans() -> list[Scan]:
     """
-    Discover every valid scan in the dataset.
+    Discover every subject/session pair under HAND_ROOT and build a
+    Scan object for each one.
     """
 
     scans = []
@@ -36,15 +33,7 @@ def discover_scans() -> list[Scan]:
             if not session_dir.is_dir():
                 continue
 
-            try:
-                scan = build_scan(subject_dir, session_dir)
-
-                if scan.validate():
-                    scans.append(scan)
-
-            except FileNotFoundError:
-                # Missing required raw inputs
-                continue
+            scans.append(build_scan(subject_dir, session_dir))
 
     return scans
 
@@ -65,25 +54,13 @@ def build_scan(
     session = session_dir.name
 
     # --------------------------------------------------
-    # Raw inputs
+    # Raw bold + physio (all together in session_dir)
     # --------------------------------------------------
 
-    bold = find_required(session_dir, "*echo-1_bold.nii.gz")
-    bold_json = find_required(session_dir, "*echo-1_bold.json")
-
-    # --------------------------------------------------
-    # Optional files
-    # --------------------------------------------------
-
-    motion = find_file(
-        MOTION_ROOT / subject / session,
-        "*.1D",
-    )
-
-    ground_truth = find_file(
-        GROUND_TRUTH_ROOT,
-        f"{subject}_{session}*.txt",
-    )
+    bold = find_file(session_dir, "*_bold.nii.gz")
+    bold_json = find_file(session_dir, "*_bold.json")
+    motion = find_file(session_dir, "motion.1D")
+    ground_truth = find_file(session_dir, "hr.txt")
 
     # --------------------------------------------------
     # HAPPY outputs
@@ -103,11 +80,10 @@ def build_scan(
         happy_session / "stdres"
     )
 
-    vessels_dir = happy_session / "vessels"
+    vessel_dir = happy_session / "vessel"
 
-    vessel_map = find_file(vessels_dir, "map.nii.gz")
-    vessel_mask = find_file(vessels_dir, "mask.nii.gz")
-    vessel_metadata = find_file(vessels_dir, "metadata.json")
+    vessel_map = find_file(vessel_dir, "map.nii.gz")
+    vessel_mask = find_file(vessel_dir, "mask.nii.gz")
 
     # --------------------------------------------------
     # Construct Scan
@@ -128,7 +104,6 @@ def build_scan(
         stdres_json=stdres_json,
         vessel_map=vessel_map,
         vessel_mask=vessel_mask,
-        vessel_metadata=vessel_metadata,
     )
 
 
@@ -139,7 +114,7 @@ def build_scan(
 def find_file(directory: Path, pattern: str) -> Path | None:
     """
     Return the first file matching a pattern.
-    Returns None if nothing matches.
+    Returns None if nothing matches (never raises).
     """
 
     if not directory.exists():
@@ -162,19 +137,3 @@ def find_happy_pair(folder: Path) -> tuple[Path | None, Path | None]:
     timeseries = find_file(folder, "timeseries.tsv.gz")
 
     return metadata, timeseries
-
-
-def find_required(directory: Path, pattern: str) -> Path:
-    """
-    Find a required file.
-    Raises FileNotFoundError if missing.
-    """
-
-    path = find_file(directory, pattern)
-
-    if path is None:
-        raise FileNotFoundError(
-            f"Missing required file: {pattern}"
-        )
-
-    return path

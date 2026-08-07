@@ -2,9 +2,7 @@
 scan.py
 
 Represents one fMRI scan (one subject + one session).
-
 This class only knows where files are located.
-
 """
 
 from dataclasses import dataclass
@@ -30,60 +28,76 @@ class Scan:
     session: str
 
     # --------------------------------------------------
-    # Raw fMRI inputs
+    # Raw fMRI inputs --> optional
+    # happy already consumed these on Quest, so 
+    # NOT required for building dataset.
     # --------------------------------------------------
 
-    bold: Path
-    bold_json: Path
+    bold: Path | None
+    bold_json: Path | None
+
+    # --------------------------------------------------
+    # Physio --> required for dataset
+    # --------------------------------------------------
 
     motion: Path | None
     ground_truth: Path | None
 
     # --------------------------------------------------
-    # HAPPY outputs
+    # HAPPY outputs --> required for dataset
     # --------------------------------------------------
 
-    cardpulse_tsv: Path
-    cardpulse_json: Path
+    cardpulse_tsv: Path | None
+    cardpulse_json: Path | None
 
-    sliceres_tsv: Path
-    sliceres_json: Path
+    sliceres_tsv: Path | None
+    sliceres_json: Path | None
 
-    stdres_tsv: Path
-    stdres_json: Path
+    stdres_tsv: Path | None
+    stdres_json: Path | None
 
-    vessel_map: Path
-    vessel_mask: Path
-    vessel_metadata: Path
+    # --------------------------------------------------
+    # Vessel outputs --> not used by the cardiac-cleaning
+    # model--> kept for completeness
+    # --------------------------------------------------
+
+    vessel_map: Path | None
+    vessel_mask: Path | None
 
     # ==================================================
     # FUNCTIONS
     # ==================================================
 
-    def missing_files(self) -> list[Path]:
+    def missing_files(self) -> list[str]:
         """
-        Return a list of missing required files.
+        Return the names of files that are REQUIRED to build the ML
+        dataset but are missing for this scan. bold/bold_json/vessel_*
+        are intentionally excluded -- they're optional provenance, not
+        required for training.
         """
 
-        required = [
-            self.bold,
-            self.bold_json,
-            self.cardpulse_tsv,
-            self.cardpulse_json,
-            self.sliceres_tsv,
-            self.sliceres_json,
-            self.stdres_tsv,
-            self.stdres_json,
-            self.vessel_map,
-            self.vessel_mask,
-            self.vessel_metadata,
+        required = {
+            "motion": self.motion,
+            "ground_truth": self.ground_truth,
+            "cardpulse_tsv": self.cardpulse_tsv,
+            "cardpulse_json": self.cardpulse_json,
+            "sliceres_tsv": self.sliceres_tsv,
+            "sliceres_json": self.sliceres_json,
+            "stdres_tsv": self.stdres_tsv,
+            "stdres_json": self.stdres_json,
+        }
+
+        return [
+            name for name, path in required.items()
+            if path is None or not path.exists()
         ]
 
-        return [path for path in required if not path.exists()]
+
 
     def validate(self) -> bool:
         """
-        Returns True if all required files exist.
+        Returns True if every file required to build the ML dataset
+        exists for this scan.
         """
         return len(self.missing_files()) == 0
 
@@ -99,21 +113,29 @@ class Scan:
         """
         return self.ground_truth is not None and self.ground_truth.exists()
 
+
+    def has_bold(self) -> bool:
+        """
+        Returns True if the local raw bold copy exists (provenance
+        only -- not required for the ML dataset).
+        """
+        return self.bold is not None and self.bold.exists()
+
     def summary(self) -> str:
         """
         Return a readable summary of the scan.
         """
 
-        motion = "Yes" if self.has_motion() else "No"
-        ground_truth = "Yes" if self.has_ground_truth() else "No"
-
         return (
             f"Subject      : {self.subject}\n"
             f"Session      : {self.session}\n"
-            f"Motion       : {motion}\n"
-            f"Ground Truth : {ground_truth}\n"
+            f"Motion       : {'Yes' if self.has_motion() else 'No'}\n"
+            f"Ground Truth : {'Yes' if self.has_ground_truth() else 'No'}\n"
+            f"Bold (local) : {'Yes' if self.has_bold() else 'No'}\n"
             f"Valid Scan   : {self.validate()}"
         )
+
+
 
     def __repr__(self) -> str:
         """
@@ -126,5 +148,7 @@ class Scan:
         return f"{self.subject}_{self.session}"
 
     @property
-    def happy_dir(self) -> Path:
+    def happy_dir(self) -> Path | None:
+        if self.cardpulse_tsv is None:
+            return None
         return self.cardpulse_tsv.parent.parent
