@@ -7,8 +7,6 @@ Usage
 from config import (
     HAND_ROOT,
     HAPPY_ROOT,
-    MOTION_ROOT,
-    GROUND_TRUTH_ROOT,
     DATASET_ROOT,
     TASK,
     ECHO,
@@ -44,10 +42,12 @@ with open(CONFIG_FILE, "r") as f:
 # PATHS
 # ==========================================================
 
+# HAND_ROOT now holds bold, motion, and ground truth together per
+# subject/session. MOTION_ROOT / GROUND_TRUTH_ROOT
+
+
 HAND_ROOT = PROJECT_ROOT / CONFIG["paths"]["hand"]
 HAPPY_ROOT = PROJECT_ROOT / CONFIG["paths"]["happy"]
-MOTION_ROOT = PROJECT_ROOT / CONFIG["paths"]["motion"]
-GROUND_TRUTH_ROOT = PROJECT_ROOT / CONFIG["paths"]["ground_truth"]
 
 RAW_DATA_ROOT = PROJECT_ROOT / CONFIG["paths"]["raw_data"]
 OUTPUT_ROOT = PROJECT_ROOT / CONFIG["paths"]["output"]
