@@ -29,3 +29,13 @@ __pycache__/
 
 # Logs
 *.log
+
+# Raw / intermediate data - never commit individually (privacy)
+data/_staging/
+data/happy/
+data/happy_clean/
+data/happy_clean_v2/
+data/hand/
+data/sub-*/
+*.tsv.gz
+*.1D
