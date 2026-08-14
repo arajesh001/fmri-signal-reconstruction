@@ -3,13 +3,6 @@ labels.py
 
 Loads the happy cardiac waveform and the hr.txt ground truth for one
 scan, and aligns them onto a common time base.
-
-Resolution decision: use `stdres` (fixed 25 Hz across all subjects) as
-the target waveform -- cardpulse is a single averaged pulse template,
-not a continuous timeseries, and sliceres's rate isn't guaranteed
-constant across subjects.
-
-GROUND TRUTH COLUMN IS UNCONFIRMED. See notebooks/check_alignment.ipynb
 """
 
 import json
@@ -161,7 +154,6 @@ def build_labels(scan: Scan, resolution: str = "stdres") -> dict:
     Load + align happy waveform and ground truth for one scan.
 
     Returns
-    -------
     {
         "Scan ID": str,
         "Waveform": np.ndarray,  # happy's waveform --> model input
