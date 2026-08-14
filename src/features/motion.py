@@ -2,16 +2,9 @@
 motion.py
 
 Motion features from motion.1D: raw params + first derivatives + FD,
-interpolated onto the cardiac waveform's time base (target_rate/
-n_samples, passed in by the caller -- normally taken directly from
-labels.build_labels(scan) so the two line up sample-for-sample).
+interpolated onto the cardiac waveform's time base.
 
-Moved here from src/dataset/features.py so feature-computation code
-(this file now, future frequency/morphological feature files later)
-has its own home separate from scan discovery/labels/windowing.
-
-motion.1D column layout (confirmed via AFNI 3dvolreg -1Dfile, NOT
-inferred -- see project discussion):
+motion.1D column layout (confirmed via AFNI 3dvolreg -1Dfile):
 
     n  roll  pitch  yaw  dS  dL  dP  rmsold  rmsnew
 
