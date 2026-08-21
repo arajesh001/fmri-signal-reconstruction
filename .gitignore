@@ -39,3 +39,6 @@ data/hand/
 data/sub-*/
 *.tsv.gz
 *.1D
+
+# Temporary presentation output
+slideshow/
