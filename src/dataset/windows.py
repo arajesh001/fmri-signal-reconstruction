@@ -14,6 +14,9 @@ that's window_size=250, stride=125.
 
 import numpy as np
 
+from src.features.frequency import build_frequency_features
+from src.features.signal_quality import build_signal_quality_features
+
 
 # ==========================================================
 # CORE SLIDING WINDOW
@@ -106,6 +109,7 @@ def build_windows(
     target: np.ndarray,
     window_size: int,
     stride: int,
+    fs: float,
 ) -> dict:
     """
     Build both representations (XGBoost-flattened, CNN-stacked) plus
@@ -115,11 +119,15 @@ def build_windows(
     cardiac: (n_samples,)
     motion_features: (n_samples, 13)
     target: (n_samples,)
+    fs: sampling rate of cardiac/target (e.g. 25.0 for stdres) --
+        needed by frequency.build_frequency_features, not used
+        anywhere else in this function.
 
     Returns
     {
-        "X_xgb":(n_windows, 5 + 65),
-        "X_cnn":(n_windows, window_size, 14),
+        "X_xgb": (n_windows, 5 + 65 + 2 + 2),  # cardiac stats, motion
+                                                # stats, frequency, SQI
+        "X_cnn": (n_windows, window_size, 14),
         "y": (n_windows, window_size),
     }
 
@@ -141,6 +149,12 @@ def build_windows(
 
     cardiac_stats = flatten_window_stats(cardiac_windows)
     motion_stats = flatten_window_stats(motion_windows)
-    X_xgb = np.concatenate([cardiac_stats, motion_stats], axis=1)
+    frequency_features = build_frequency_features(cardiac_windows, fs)
+    signal_quality_features = build_signal_quality_features(cardiac_windows)
+
+    X_xgb = np.concatenate(
+        [cardiac_stats, motion_stats, frequency_features, signal_quality_features],
+        axis=1,
+    )
 
     return {"X_xgb": X_xgb, "X_cnn": X_cnn, "y": target_windows}
