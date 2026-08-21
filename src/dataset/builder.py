@@ -55,7 +55,8 @@ def build_dataset(
 
     Returns
     {
-        "X_xgb": (n_windows_total, 70),
+        "X_xgb": (n_windows_total, 74),  # cardiac stats, motion stats,
+                                          # frequency, signal-quality
         "X_cnn": (n_windows_total, window_size, 14),
         "y": (n_windows_total, window_size),
         "subject_ids": (n_windows_total,)  -- e.g. "sub-20", for grouped splitting
@@ -67,15 +68,21 @@ def build_dataset(
     summarize_dataset(scans)
 
     X_xgb_parts, X_cnn_parts, y_parts, subject_id_parts = [], [], [], []
+    skipped = []
 
     for scan in scans:
-        labels = build_labels(scan, resolution)
-        features = build_features(scan, labels["Sampling Rate"], len(labels["Waveform"]))
-        preprocessed = preprocess_scan(labels["Waveform"], features, labels["Target"])
-        windows = build_windows(
-            preprocessed["Waveform"], preprocessed["Motion Features"],
-            preprocessed["Target"], window_size, stride,
-        )
+        try:
+            labels = build_labels(scan, resolution)
+            features = build_features(scan, labels["Sampling Rate"], len(labels["Waveform"]))
+            preprocessed = preprocess_scan(labels["Waveform"], features, labels["Target"])
+            windows = build_windows(
+                preprocessed["Waveform"], preprocessed["Motion Features"],
+                preprocessed["Target"], window_size, stride,
+                fs=labels["Sampling Rate"],
+            )
+        except ValueError as e:
+            skipped.append((scan.id, str(e).splitlines()[0]))
+            continue
 
         n_windows = windows["X_xgb"].shape[0]
 
@@ -83,6 +90,11 @@ def build_dataset(
         X_cnn_parts.append(windows["X_cnn"])
         y_parts.append(windows["y"])
         subject_id_parts.append(np.full(n_windows, scan.subject))
+
+    if skipped:
+        print(f"\nSkipped {len(skipped)} scan(s) that failed to build:")
+        for scan_id, msg in skipped:
+            print(f"  {scan_id}: {msg}")
 
     X_xgb = np.concatenate(X_xgb_parts, axis=0)
     X_cnn = np.concatenate(X_cnn_parts, axis=0)
