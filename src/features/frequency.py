@@ -2,32 +2,12 @@
 frequency.py
 
 Frequency-domain features per window: dominant frequency + band power
-within the plausible cardiac band. See project discussion (PPG/HR
-feature-engineering research) for why these are the standard first
-additions beyond flattened time-domain stats -- mean/std/min/max/rms
-can't distinguish where in the cardiac cycle a window sits, frequency
-content can.
-
-Operates on already-windowed arrays -- same shape convention as
-windows.flatten_window_stats -- so this plugs into the same place
-X_xgb gets assembled, e.g.:
-
-    X_xgb = np.concatenate(
-        [cardiac_stats, motion_stats, frequency_features], axis=1
-    )
-
-Independent of signal_quality.py on purpose -- no shared imports or
-constants between the two files, so either can be added, removed, or
-changed without touching the other.
+within the plausible cardiac band. 
 """
 
 import numpy as np
 from scipy.signal import periodogram
 
-# Matches labels.py's GROUND_TRUTH_BANDPASS_HZ -- not imported from
-# there on purpose (independence). check_alignment.ipynb's spectral
-# check cell used (0.5, 3.0) for a broader exploratory look; this
-# defaults to the tighter band labels.py actually filters to.
 CARDIAC_BAND_HZ = (0.8, 3.0)
 
 
