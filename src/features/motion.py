@@ -5,6 +5,7 @@ Motion features from motion.1D: raw params + first derivatives + FD,
 interpolated onto the cardiac waveform's time base.
 
 motion.1D column layout (confirmed via AFNI 3dvolreg -1Dfile):
+(LABELS COPIED FROM LAB INFO SHEET)
 
     n  roll  pitch  yaw  dS  dL  dP  rmsold  rmsnew
 
@@ -23,9 +24,7 @@ motion.1D column layout (confirmed via AFNI 3dvolreg -1Dfile):
 
 import json
 import warnings
-
 import numpy as np
-
 from src.dataset.scan import Scan
 
 MOTION_COLUMNS = [
@@ -57,8 +56,8 @@ def _get_tr(scan: Scan) -> float:
     """
     TR in seconds for this scan.
 
-    Design choice: prefers reading RepetitionTime out of bold_json
-    when a local copy exists, falls back to DEFAULT_TR otherwise.
+    Prefers reading RepetitionTime  bold_json
+    when local copy exists, falls back to DEFAULT_TR otherwise.
     """
 
     if scan.bold_json is not None and scan.bold_json.exists():
@@ -77,8 +76,7 @@ def load_motion(scan: Scan) -> dict:
     """
     Load and parse motion.1D for one scan.
 
-    Returns
-
+    Returns:
     dict mapping each name in MOTION_COLUMNS to a 1D np.ndarray of
     length n_TRs.
     """
@@ -95,7 +93,7 @@ def compute_derivatives(motion: dict) -> np.ndarray:
     """
     First frame-to-frame differences of roll/pitch/yaw/dS/dL/dP.
 
-    Returns
+    Returns:
     np.ndarray, shape (n_TRs, 6), columns in MOTION_PARAM_COLUMNS order.
 
     """
@@ -118,7 +116,7 @@ def compute_fd(motion: dict) -> np.ndarray:
     rotation_deg = derivatives[:, :n_rot]
     translation_mm = derivatives[:, n_rot:]
 
-    # arc length: mm = radians * head radius
+    # arc len: mm = radians * head radius
     rotation_mm = np.deg2rad(rotation_deg) * HEAD_RADIUS_MM
 
     return np.sum(np.abs(np.hstack([rotation_mm, translation_mm])), axis=1)
@@ -171,10 +169,10 @@ def build_features(scan: Scan, target_rate: float, n_samples: int) -> np.ndarray
     Load motion.1D, compute derivatives + FD, interpolate everything
     onto (target_rate, n_samples).
 
-    Parameters
+    Params :
     target_rate, n_samples : the exact time axis to align to.
 
-    Returns
+    Returns:
     np.ndarray, shape (n_samples, 13). Channel order is CHANNEL_NAMES
     (6 raw params, 6 derivatives, 1 FD).
     """
