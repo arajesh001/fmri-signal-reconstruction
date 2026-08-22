@@ -15,6 +15,7 @@ that's window_size=250, stride=125.
 import numpy as np
 
 from src.features.frequency import build_frequency_features
+from src.features.motion import motion_window_stats
 from src.features.signal_quality import build_signal_quality_features
 
 
@@ -110,6 +111,8 @@ def build_windows(
     window_size: int,
     stride: int,
     fs: float,
+    motion_raw: np.ndarray,
+    motion_tr: float,
 ) -> dict:
     """
     Build both representations (XGBoost-flattened, CNN-stacked) plus
@@ -117,11 +120,19 @@ def build_windows(
 
     Params:
     cardiac: (n_samples,)
-    motion_features: (n_samples, 13)
+
+    motion_features: (n_samples, 13) --> interpolated (upsampled) motion,
+        used for X_cnn only
+
     target: (n_samples,)
-    fs: sampling rate of cardiac/target (e.g. 25.0 for stdres) --
-        needed by frequency.build_frequency_features, not used
-        anywhere else in this function.
+
+    fs: sampling rate of cardiac/target (25 for stdres).
+
+    motion_raw: (n_TRs, 13) -- motion.load_raw_features's output,
+        BEFORE interpolation. Used for X_xgb's motion stats; not of
+        motion_features.
+        
+    motion_tr: this scan's TR in seconds, for -->motion_window_stats.
 
     Returns
     {
@@ -148,7 +159,9 @@ def build_windows(
     X_cnn = stack_window_channels(cardiac_windows, motion_windows)
 
     cardiac_stats = flatten_window_stats(cardiac_windows)
-    motion_stats = flatten_window_stats(motion_windows)
+    motion_stats = motion_window_stats(
+        motion_raw, motion_tr, len(cardiac), fs, window_size, stride
+    )
     frequency_features = build_frequency_features(cardiac_windows, fs)
     signal_quality_features = build_signal_quality_features(cardiac_windows)
 

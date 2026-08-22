@@ -164,6 +164,23 @@ def interpolate_to_rate(
 # PUBLIC API
 # ==========================================================
 
+def load_raw_features(scan: Scan) -> tuple[np.ndarray, float]:
+    """
+    (n_TRs, 13) params+derivatives+FD stack, BEFORE interpolation, plus
+    this scan's TR in seconds.
+    """
+
+    motion = load_motion(scan)
+    tr = _get_tr(scan)
+
+    params = np.column_stack([motion[c] for c in MOTION_PARAM_COLUMNS])
+    derivatives = compute_derivatives(motion)
+    fd = compute_fd(motion)
+
+    combined = np.column_stack([params, derivatives, fd])
+    return combined, tr
+
+
 def build_features(scan: Scan, target_rate: float, n_samples: int) -> np.ndarray:
     """
     Load motion.1D, compute derivatives + FD, interpolate everything
@@ -177,13 +194,64 @@ def build_features(scan: Scan, target_rate: float, n_samples: int) -> np.ndarray
     (6 raw params, 6 derivatives, 1 FD).
     """
 
-    motion = load_motion(scan)
-    tr = _get_tr(scan)
-
-    params = np.column_stack([motion[c] for c in MOTION_PARAM_COLUMNS])
-    derivatives = compute_derivatives(motion)
-    fd = compute_fd(motion)
-
-    combined = np.column_stack([params, derivatives, fd])
-
+    combined, tr = load_raw_features(scan)
     return interpolate_to_rate(combined, tr, target_rate, n_samples)
+
+
+def motion_window_stats(
+    combined: np.ndarray,
+    tr: float,
+    n_samples: int,
+    target_rate: float,
+    window_size: int,
+    stride: int,
+) -> np.ndarray:
+    """
+    Per-window mean/std/min/max/rms computed directly from the real
+    TR-resolution motion samples--> NOT from interpolate_to_rate's upsampled
+    series.
+
+    Params:
+    combined: (n_TRs, n_channels) -- load_raw_features's output,
+        BEFORE interpolation.
+    n_samples, target_rate, window_size, stride: the same window
+        definition used everywhere else
+
+    Returns
+    (n_windows, n_channels * 5) --> mean, std, min, max, rms per
+    channel
+    """
+
+    mean = combined.mean(axis=0, keepdims=True)
+    std = combined.std(axis=0, keepdims=True)
+    std = np.where(std ==0, 1.0, std)
+    combined = (combined - mean) / std
+
+    n_trs = combined.shape[0]
+    t_source = np.arange(n_trs) * tr
+
+    stats_per_window = []
+
+    for start in range(0, n_samples - window_size + 1, stride):
+        t_start = start / target_rate
+        t_end = (start + window_size) / target_rate
+        in_window = (t_source >= t_start) & (t_source < t_end)
+
+        if not np.any(in_window):
+            nearest = np.argmin(np.abs(t_source - (t_start + t_end) / 2))
+            in_window = np.zeros(n_trs, dtype=bool)
+            in_window[nearest] = True
+
+        segment = combined[in_window]
+
+        window_mean = segment.mean(axis=0)
+        window_std = segment.std(axis=0)
+        window_min = segment.min(axis=0)
+        window_max = segment.max(axis=0)
+        window_rms = np.sqrt((segment ** 2).mean(axis=0))
+
+        stats_per_window.append(
+            np.concatenate([window_mean, window_std, window_min, window_max, window_rms])
+        )
+
+    return np.array(stats_per_window)
