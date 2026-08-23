@@ -44,15 +44,21 @@ def make_loso_splits(X: np.ndarray, y: np.ndarray, subject_ids: np.ndarray):
 # TRAIN
 # ==========================================================
 
-def train_fold(X_train: np.ndarray, y_train: np.ndarray) -> XGBRegressor:
+def train_fold(
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    sample_weight_train: np.ndarray | None = None,
+) -> XGBRegressor:
     """
     Fit one XGBRegressor on one LOSO fold's training data.
+
+    sample_weight_train: optional, from signal_quality.quality_weight
     """
-    model = XGBRegressor(max_depth=3, 
-                         n_estimators=75, 
+    model = XGBRegressor(max_depth=3,
+                         n_estimators=75,
                          learning_rate=0.05,
                          random_state=42)
-    model.fit(X_train, y_train)
+    model.fit(X_train, y_train, sample_weight=sample_weight_train)
 
     return model
 
@@ -81,9 +87,16 @@ def evaluate_fold(model: XGBRegressor, X_test: np.ndarray, y_test: np.ndarray) -
 # PUBLIC API
 # ==========================================================
 
-def run_loso_cv(X: np.ndarray, y: np.ndarray, subject_ids: np.ndarray) -> list[dict]:
+def run_loso_cv(
+    X: np.ndarray,
+    y: np.ndarray,
+    subject_ids: np.ndarray,
+    sample_weight: np.ndarray | None = None,
+) -> list[dict]:
     """
     Run the full LOSO loop: split, train, evaluate, once per subject.
+
+    sample_weight: optional, same length as X/y --> sliced by train_idx
 
     Returns a list of per-fold result dicts, each tagged with the
     held-out subject --> preds never pooled across folds; so
@@ -96,11 +109,15 @@ def run_loso_cv(X: np.ndarray, y: np.ndarray, subject_ids: np.ndarray) -> list[d
         X_train, X_test = X[train_idx], X[test_idx]
         y_train, y_test = y[train_idx], y[test_idx]
 
+        sample_weight_train = None
+        if sample_weight is not None:
+            sample_weight_train = sample_weight[train_idx]
+
         # LOSO -->guarantees every row in test_idx belongs to same
         # subject --> [0] reads off which one.
         held_out_subject = subject_ids[test_idx][0]
 
-        model = train_fold(X_train, y_train)
+        model = train_fold(X_train, y_train, sample_weight_train)
         metrics = evaluate_fold(model, X_test, y_test)
 
         fold_results.append({"subject": held_out_subject, **metrics})
@@ -127,3 +144,17 @@ def summarize_results(fold_results: list[dict]) -> None:
     print(f"corr: {np.mean(corrs):.4f} (+/- {np.std(corrs):.4f})")
 
 
+if __name__ == "__main__":
+    dataset = build_dataset()
+    y = extract_center_target(dataset["y"])
+
+
+    print("\n=== unweighted ===")
+    fold_results = run_loso_cv(dataset["X_xgb"], y, dataset["subject_ids"])
+    summarize_results(fold_results)
+
+    print("\n=== weighted (quality_weight as sample_weight) ===")
+    weighted_fold_results = run_loso_cv(
+        dataset["X_xgb"], y, dataset["subject_ids"], sample_weight=dataset["sample_weight"]
+    )
+    summarize_results(weighted_fold_results)
