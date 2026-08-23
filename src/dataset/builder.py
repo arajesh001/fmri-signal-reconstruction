@@ -9,7 +9,7 @@ splitting (split by subject, not by window)
 
 import numpy as np
 
-from src.features.motion import build_features
+from src.features.motion import build_features, load_raw_features
 
 from .discovery import discover_scans
 from .labels import build_labels
@@ -59,7 +59,8 @@ def build_dataset(
                                           # frequency, signal-quality
         "X_cnn": (n_windows_total, window_size, 14),
         "y": (n_windows_total, window_size),
-        "subject_ids": (n_windows_total,)  -- e.g. "sub-20", for grouped splitting
+        "subject_ids": (n_windows_total,)  --> e.g. "sub-20", for grouped splitting
+        "sample_weight": sample_weight via sqi
     }
     """
 
@@ -67,18 +68,20 @@ def build_dataset(
     scans = filter_scans(scans)
     summarize_dataset(scans)
 
-    X_xgb_parts, X_cnn_parts, y_parts, subject_id_parts = [], [], [], []
+    X_xgb_parts, X_cnn_parts, y_parts, subject_id_parts, s_weight_parts = [], [], [], [], []
     skipped = []
 
     for scan in scans:
         try:
             labels = build_labels(scan, resolution)
             features = build_features(scan, labels["Sampling Rate"], len(labels["Waveform"]))
+            motion_raw, motion_tr = load_raw_features(scan)
             preprocessed = preprocess_scan(labels["Waveform"], features, labels["Target"])
             windows = build_windows(
                 preprocessed["Waveform"], preprocessed["Motion Features"],
                 preprocessed["Target"], window_size, stride,
                 fs=labels["Sampling Rate"],
+                motion_raw=motion_raw, motion_tr=motion_tr,
             )
         except ValueError as e:
             skipped.append((scan.id, str(e).splitlines()[0]))
@@ -89,6 +92,7 @@ def build_dataset(
         X_xgb_parts.append(windows["X_xgb"])
         X_cnn_parts.append(windows["X_cnn"])
         y_parts.append(windows["y"])
+        s_weight_parts.append(windows["sample_weight"])
         subject_id_parts.append(np.full(n_windows, scan.subject))
 
     if skipped:
@@ -100,8 +104,9 @@ def build_dataset(
     X_cnn = np.concatenate(X_cnn_parts, axis=0)
     y = np.concatenate(y_parts, axis=0)
     subject_ids = np.concatenate(subject_id_parts, axis=0)
+    sample_weights = np.concatenate(s_weight_parts, axis=0)
 
     print(f"Built dataset: X_xgb={X_xgb.shape}, X_cnn={X_cnn.shape}, "
           f"y={y.shape}, subject_ids={subject_ids.shape}")
 
-    return {"X_xgb": X_xgb, "X_cnn": X_cnn, "y": y, "subject_ids": subject_ids}
+    return {"X_xgb": X_xgb, "X_cnn": X_cnn, "y": y, "subject_ids": subject_ids, "sample_weight": sample_weights}

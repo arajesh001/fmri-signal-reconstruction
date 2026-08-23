@@ -16,8 +16,7 @@ import numpy as np
 
 from src.features.frequency import build_frequency_features
 from src.features.motion import motion_window_stats
-from src.features.signal_quality import build_signal_quality_features
-
+from src.features.signal_quality import build_signal_quality_features, quality_weight
 
 # ==========================================================
 # CORE SLIDING WINDOW
@@ -131,7 +130,7 @@ def build_windows(
     motion_raw: (n_TRs, 13) -- motion.load_raw_features's output,
         BEFORE interpolation. Used for X_xgb's motion stats; not of
         motion_features.
-        
+
     motion_tr: this scan's TR in seconds, for -->motion_window_stats.
 
     Returns
@@ -140,6 +139,7 @@ def build_windows(
                                                 # stats, frequency, SQI
         "X_cnn": (n_windows, window_size, 14),
         "y": (n_windows, window_size),
+        "sample_weight": quality_weight(cardiac_windows)
     }
 
     """
@@ -170,4 +170,6 @@ def build_windows(
         axis=1,
     )
 
-    return {"X_xgb": X_xgb, "X_cnn": X_cnn, "y": target_windows}
+    s_weight = quality_weight(cardiac_windows)
+
+    return {"X_xgb": X_xgb, "X_cnn": X_cnn, "y": target_windows, "sample_weight": s_weight}
