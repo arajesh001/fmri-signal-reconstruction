@@ -1,0 +1,8 @@
+{
+  "window_size": 250,
+  "stride": 125,
+  "resolution": "stdres",
+  "target_rate": 25.0,
+  "n_scans": 17,
+  "git_commit": "c70fee04b2318c94f6e075b97d3e63ea74296b6d"
+}
