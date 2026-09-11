@@ -16,6 +16,15 @@ from sklearn.model_selection import LeaveOneGroupOut
 from xgboost import XGBRegressor
 
 from src.dataset.builder import build_dataset
+from src.models.wandb_logging import log_results_to_wandb
+
+# used by train_fold and the W&B config
+XGB_PARAMS = {
+    "max_depth": 3,
+    "n_estimators": 75,
+    "learning_rate": 0.05,
+    "random_state": 42,
+}
 
 # ==========================================================
 # LOSO
@@ -54,10 +63,7 @@ def train_fold(
 
     sample_weight_train: optional, from signal_quality.quality_weight
     """
-    model = XGBRegressor(max_depth=3,
-                         n_estimators=75,
-                         learning_rate=0.05,
-                         random_state=42)
+    model = XGBRegressor(**XGB_PARAMS)
     model.fit(X_train, y_train, sample_weight=sample_weight_train)
 
     return model
@@ -144,17 +150,4 @@ def summarize_results(fold_results: list[dict]) -> None:
     print(f"corr: {np.mean(corrs):.4f} (+/- {np.std(corrs):.4f})")
 
 
-if __name__ == "__main__":
-    dataset = build_dataset()
-    y = extract_center_target(dataset["y"])
 
-
-    print("\n=== unweighted ===")
-    fold_results = run_loso_cv(dataset["X_xgb"], y, dataset["subject_ids"])
-    summarize_results(fold_results)
-
-    print("\n=== weighted (quality_weight as sample_weight) ===")
-    weighted_fold_results = run_loso_cv(
-        dataset["X_xgb"], y, dataset["subject_ids"], sample_weight=dataset["sample_weight"]
-    )
-    summarize_results(weighted_fold_results)

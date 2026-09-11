@@ -12,7 +12,8 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, random_split, TensorDataset
 
 from src.dataset.builder import build_dataset
-from src.models.xgboost_baseline import log_results_to_wandb, summarize_results
+from src.models.wandb_logging import log_results_to_wandb
+from src.models.xgboost_baseline import summarize_results
 
 from .dataset import get_loso_split, make_dataloader
 from .losses import SpectralMSELoss
@@ -199,3 +200,30 @@ def run_loso(
     return fold_results
 
 
+# script to run 
+if __name__ == "__main__":
+    dataset = build_dataset()
+
+    # just a start, idk --> change later
+    n_epochs = 50
+    batch_size = 32
+
+    # run
+    fold_results = run_loso(
+        dataset["X_cnn"], dataset["y"], dataset["subject_ids"],
+        model_type="baseline",
+        n_epochs=n_epochs,
+        batch_size=batch_size,
+    )
+
+    # print loss at each epoch 
+    summarize_results(fold_results)
+
+    # w&b logging
+    log_results_to_wandb(fold_results, config={
+        "model": "baseline",
+        "n_epochs": n_epochs,
+        "batch_size": batch_size,
+        "mse_weight": 1.0,       
+        "spectral_weight": 0.01,
+    })
